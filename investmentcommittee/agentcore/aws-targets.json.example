@@ -1,0 +1,7 @@
+[
+  {
+    "name": "default",
+    "account": "<your-aws-account-id>",
+    "region": "us-east-1"
+  }
+]

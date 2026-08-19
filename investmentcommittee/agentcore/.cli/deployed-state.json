@@ -1,0 +1,23 @@
+{
+  "targets": {
+    "default": {
+      "resources": {
+        "runtimes": {
+          "orchestrator": {
+            "runtimeId": "investmentcommittee_orchestrator-ewTkN4DUau",
+            "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:854732971202:runtime/investmentcommittee_orchestrator-ewTkN4DUau",
+            "roleArn": "arn:aws:iam::854732971202:role/AgentCore-investmentcommi-ApplicationAgentOrchestra-MbqVzyZumOcx"
+          }
+        },
+        "memories": {
+          "orchestratorMemory": {
+            "memoryId": "investmentcommittee_orchestratorMemory-WI6Ph538q7",
+            "memoryArn": "arn:aws:bedrock-agentcore:us-east-1:854732971202:memory/investmentcommittee_orchestratorMemory-WI6Ph538q7"
+          }
+        },
+        "stackName": "AgentCore-investmentcommittee-default",
+        "deployHash": "d7fbcd91b89a62d0"
+      }
+    }
+  }
+}
