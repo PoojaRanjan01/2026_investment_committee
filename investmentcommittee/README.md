@@ -1,4 +1,6 @@
-# AI Investment Committee
+# The Undervalued
+
+*Undervalued moves. Underrated ideas.*
 
 Multi-agent stock analysis system on Amazon Bedrock AgentCore, built for the
 "From Data to Decisions" AWS Community Day talk. A single orchestrator agent
@@ -7,23 +9,46 @@ Strands **Agents-as-Tools** pattern — one AgentCore Runtime, no per-agent
 deployment. See `../.claude/plans/velvet-stirring-orbit.md` for the full
 phased plan (Phase 0 → 1 → 2).
 
-**Status: Phase 0 complete.** Orchestrator + Fundamental Analyst specialist
-(`app/orchestrator/specialists/fundamental_agent.py`, backed by live yfinance
-data) deployed and verified against a real Bedrock Runtime
-(`investmentcommittee_orchestrator-Hz2Bdg2vnU`, us-east-1). Every specialist
-returns the shared `SpecialistVerdict` schema (`specialists/schemas.py`) —
-score/confidence/rationale/evidence — so later phases can compute a weighted
-decision and detect disagreement.
+**Status: Phase 1 complete (local).** Orchestrator + four specialists —
+Fundamental, Technical, News, Risk (`app/orchestrator/specialists/`), all
+backed by live yfinance data — plus a `decision_synthesis` tool that computes
+a confidence-weighted BUY/HOLD/AVOID decision from whichever verdicts the
+orchestrator gathered. The orchestrator routes dynamically: a full "should I
+invest" question pulls all four specialists + decision_synthesis; a narrower
+question ("why did it move today") pulls only the relevant one or two. Every
+specialist returns the shared `SpecialistVerdict` schema (`specialists/schemas.py`)
+so the Decision Agent's weighted scoring and a future Phase 2 Debate Agent's
+disagreement detection both work off the same shape.
 
-Next up (Phase 1): Technical, News, and Risk specialists, a Decision
-(synthesis) agent, and dynamic query-based routing in the orchestrator's
-system prompt.
+Model: Amazon Nova Pro (`us.amazon.nova-pro-v1:0`) — see git history/memory
+for why (Anthropic Marketplace billing blocked on the AWS account in use).
+
+Not yet redeployed to the cloud Runtime with Phase 1 — verified via
+`agentcore dev` locally only so far.
+
+Next up (Phase 2): Valuation, Earnings, Industry, Portfolio specialists, a
+Debate Agent triggered on specialist disagreement, and Bedrock Guardrails.
+
+**Frontend** (`frontend/`, React + Vite, branded as "The Undervalued"): a
+single "Analyze" trigger shows each specialist's card live as the
+orchestrator calls it (score, confidence, rationale, evidence), with cards it
+decides *not* to call for a given question staying in a "not called" state —
+a direct visualization of the dynamic-routing behavior. Ends with the
+synthesized Decision card (when `decision_synthesis` fires) and the
+orchestrator's narrated summary. Styled with the **undervalued-design** skill
+(`.claude/skills/undervalued-design/SKILL.md`) via styled-components — see
+`frontend/README.md` for the design-system details. Talks directly to the
+local `agentcore dev` server (`VITE_API_BASE_URL` in `frontend/.env`);
+pointing it at the deployed cloud Runtime instead needs a small signing proxy
+(browsers can't do AWS SigV4), not yet built.
 
 ```bash
-agentcore dev --logs --no-browser &     # local dev server
+agentcore dev --logs --no-browser &     # local dev server (port 8080)
 agentcore dev "Should I invest in AAPL?"
 agentcore deploy --yes                  # ship to AWS
 agentcore invoke "Should I invest in NVDA?"
+
+cd frontend && npm install && npm run dev   # frontend dev server (port 5173)
 ```
 
 ---

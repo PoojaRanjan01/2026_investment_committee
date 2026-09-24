@@ -1,8 +1,13 @@
+import logging
+
 import yfinance as yf
 from strands import Agent, tool
 
 from model.load import load_model
+from model_retry import new_resilient_retry_hook
 from specialists.schemas import SpecialistVerdict
+
+log = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """
 You are the Fundamental Analyst on an AI investment committee. You judge whether a
@@ -30,6 +35,30 @@ def _fetch_fundamentals(ticker: str) -> dict:
     return {field: info.get(field) for field in _FIELDS}
 
 
+# (data key, display label, value format) for the frontend's stat-tile showcase.
+# Kept separate from _FIELDS since not every fetched field is chart-worthy
+# (longName/sector/marketCap are context, not metrics to visualize).
+_METRIC_DISPLAY = [
+    ("revenueGrowth", "Revenue growth", "percent"),
+    ("earningsGrowth", "Earnings growth", "percent"),
+    ("grossMargins", "Gross margin", "percent"),
+    ("profitMargins", "Profit margin", "percent"),
+    ("returnOnEquity", "Return on equity", "percent"),
+    ("debtToEquity", "Debt to equity", "ratio"),
+    ("currentRatio", "Current ratio", "ratio"),
+    ("operatingCashflow", "Operating cash flow", "currency"),
+    ("freeCashflow", "Free cash flow", "currency"),
+]
+
+
+def _metrics_chart_data(data: dict) -> list[dict]:
+    return [
+        {"label": label, "value": data[key], "format": fmt}
+        for key, label, fmt in _METRIC_DISPLAY
+        if data.get(key) is not None
+    ]
+
+
 @tool
 def fundamental_analysis(ticker: str) -> dict:
     """Assess a company's fundamental financial health from its financial statements.
@@ -45,9 +74,11 @@ def fundamental_analysis(ticker: str) -> dict:
         rationale, and evidence grounded in the underlying financial data.
     """
     data = _fetch_fundamentals(ticker)
-    analyst = Agent(model=load_model(), system_prompt=SYSTEM_PROMPT)
+    analyst = Agent(model=load_model(), system_prompt=SYSTEM_PROMPT, hooks=[new_resilient_retry_hook()])
     verdict = analyst.structured_output(
         SpecialistVerdict,
         prompt=f"Ticker: {ticker}\nFinancial data:\n{data}",
     )
-    return verdict.model_dump()
+    result = {**verdict.model_dump(), "chartData": {"metrics": _metrics_chart_data(data)}}
+    log.info("fundamental_analysis(%s) -> %s", ticker, verdict.model_dump())
+    return result
